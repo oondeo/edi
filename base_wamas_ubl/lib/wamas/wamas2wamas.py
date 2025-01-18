@@ -5,13 +5,15 @@ import argparse
 import logging
 from pprint import pformat
 
+from freezegun import freeze_time
+
 from . import const, utils
 from .wamas2ubl import wamas2dict
 
 _logger = logging.getLogger("wamas2wamas")
 
 
-def simulate_response(dict_wamas_in):
+def simulate_response(dict_wamas_in, processed_qty=None):
     res = []
     line_idx = 0
     dict_parent_id = {}
@@ -27,24 +29,33 @@ def simulate_response(dict_wamas_in):
                     dict_parent_id=dict_parent_id,
                     telegram_type_out=telegram_type_out,
                     do_wamas2wamas=True,
+                    processed_qty=processed_qty,
                 )
                 if line:
                     res.append(line)
     return res
 
 
-def wamas2wamas(infile):
+def wamas2wamas(infile, processed_qty=None):
     data = wamas2dict(infile)
     _logger.debug(pformat(data))
-    wamas_lines = simulate_response(data)
+    wamas_lines = simulate_response(data, processed_qty=processed_qty)
     return "\n".join(wamas_lines)
 
 
+@freeze_time("2023-12-20 09:11:16")
 def main():
     parser = argparse.ArgumentParser(
         description="Converts a wamas message into wamas response.",
     )
     parser.add_argument("-v", "--verbose", action="store_true", help="enable debug log")
+    parser.add_argument(
+        "-p",
+        "--processed-qty",
+        type=float,
+        dest="processed_qty",
+        help="quantity processed, by default complete quantity is processed",
+    )
     parser.add_argument(
         "-o", "--output", dest="outputfile", help="write result in this file"
     )
@@ -53,7 +64,7 @@ def main():
     if args.verbose:
         logging.basicConfig(level=logging.DEBUG)
     infile = utils.file_open(args.inputfile).read()
-    res = wamas2wamas(infile)
+    res = wamas2wamas(infile, args.processed_qty)
     if args.outputfile:
         fd = utils.file_open(args.outputfile, "w")
         fd.write(res)
