@@ -41,6 +41,10 @@
                     name="ovh_consumer_key"
                     attrs="{'invisible': [('backend', '!=', 'ovh')]}"
                 />
+                <field
+                    name="ovh_default_product_id"
+                    attrs="{'invisible': [('backend', '!=', 'ovh')]}"
+                />
             </field>
             <field name="password" position="attributes">
                 <attribute

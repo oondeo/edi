@@ -34,6 +34,7 @@ class AccountInvoiceDownloadConfig(models.Model):
     ovh_application_key = fields.Char(string="OVH Application Key")
     ovh_application_secret = fields.Char(string="OVH Application Secret")
     ovh_consumer_key = fields.Char(string="OVH Consumer Key")
+    ovh_default_product_id = fields.Many2one("product.product", string="Line Product")
 
     @api.model
     def _ovh_get_endpoints(self):
@@ -206,22 +207,36 @@ class AccountInvoiceDownloadConfig(models.Model):
                         line,
                         json.dumps(res_iline),
                     )
+                    product_id = self.ovh_default_product_id
+                    # product_id = self._match_product(
+                    #     line["product"], parsed_inv["chatter_msg"], seller=partner
+                    # )
                     line = {
                         # We don't have accurate product code in the OVH API
                         # We had a product code in the SoAPI...
                         # 'product': {'code': 'xxx'},
+                        "product": {
+                            "barcode": product_id.barcode,
+                            "code": res_iline["description"],
+                        },
                         "name": res_iline["description"],
                         "qty": int(res_iline["quantity"]),
                         "price_unit": res_iline["unitPrice"]["value"],
+                        "discount": 0.0,
+                        # "price_subtotal": 2.61,  # not required, but needed
                         "uom": {"unece_code": "C62"},
                         "taxes": [
                             {
-                                "amount_type": "percent",
-                                "amount": 20.0,
+                                "amount_type": tax.amount_type,
+                                "amount": tax.amount,
                                 "unece_type_code": "VAT",
                                 "unece_categ_code": "S",
+                                "unece_due_date_code": "432",
                             }
+                            for tax in product_id.taxes_id
                         ],
+                        # "date_start": "2015-10-31",
+                        # "date_end": "2015-10-31",
                     }
                     if res_iline["periodStart"] and res_iline["periodEnd"]:
                         line.update(
